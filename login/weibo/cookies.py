@@ -1,6 +1,7 @@
 import time
 from io import BytesIO
 from PIL import Image
+from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
@@ -11,15 +12,14 @@ from os.path import abspath, dirname
 
 TEMPLATES_FOLDER = dirname(abspath(__file__)) + '/templates/'
 
-
-class WeiboCookies():
-    def __init__(self, username, password, browser):
+class WeiboCookies(object):
+    def __init__(self, username, password, browser=webdriver.Chrome()):
         self.url = 'https://passport.weibo.cn/signin/login?entry=mweibo&r=https://m.weibo.cn/'
         self.browser = browser
         self.wait = WebDriverWait(self.browser, 20)
         self.username = username
         self.password = password
-    
+
     def open(self):
         """
         打开网页输入用户名密码并点击
@@ -34,29 +34,27 @@ class WeiboCookies():
         password.send_keys(self.password)
         time.sleep(1)
         submit.click()
-    
+
     def password_error(self):
         """
         判断是否密码错误
         :return:
         """
         try:
-            return WebDriverWait(self.browser, 5).until(
-                EC.text_to_be_present_in_element((By.ID, 'errorMsg'), '用户名或密码错误'))
+            return WebDriverWait(self.browser, 5).until(EC.text_to_be_present_in_element((By.ID, 'errorMsg'), '用户名或密码错误'))
         except TimeoutException:
             return False
-    
+
     def login_successfully(self):
         """
         判断是否登录成功
         :return:
         """
         try:
-            return bool(
-                WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.CLASS_NAME, 'lite-iconf-profile'))))
+            return bool(WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.CLASS_NAME, 'lite-iconf-profile'))))
         except TimeoutException:
             return False
-    
+
     def get_position(self):
         """
         获取验证码位置
@@ -70,10 +68,9 @@ class WeiboCookies():
         time.sleep(2)
         location = img.location
         size = img.size
-        top, bottom, left, right = location['y'], location['y'] + size['height'], location['x'], location['x'] + size[
-            'width']
+        top, bottom, left, right = location['y'], location['y'] + size['height'], location['x'], location['x'] + size['width']
         return (top, bottom, left, right)
-    
+
     def get_screenshot(self):
         """
         获取网页截图
@@ -82,8 +79,8 @@ class WeiboCookies():
         screenshot = self.browser.get_screenshot_as_png()
         screenshot = Image.open(BytesIO(screenshot))
         return screenshot
-    
-    def get_image(self, name='captcha.png'):
+
+    def get_image(self):
         """
         获取验证码图片
         :return: 图片对象
@@ -93,7 +90,7 @@ class WeiboCookies():
         screenshot = self.get_screenshot()
         captcha = screenshot.crop((left, top, right, bottom))
         return captcha
-    
+
     def is_pixel_equal(self, image1, image2, x, y):
         """
         判断两个像素是否相同
@@ -107,12 +104,11 @@ class WeiboCookies():
         pixel1 = image1.load()[x, y]
         pixel2 = image2.load()[x, y]
         threshold = 20
-        if abs(pixel1[0] - pixel2[0]) < threshold and abs(pixel1[1] - pixel2[1]) < threshold and abs(
-                pixel1[2] - pixel2[2]) < threshold:
+        if abs(pixel1[0] - pixel2[0]) < threshold and abs(pixel1[1] - pixel2[1]) < threshold and abs(pixel1[2] - pixel2[2]) < threshold:
             return True
         else:
             return False
-    
+
     def same_image(self, image, template):
         """
         识别相似验证码
@@ -133,7 +129,7 @@ class WeiboCookies():
             print('成功匹配')
             return True
         return False
-    
+
     def detect_image(self, image):
         """
         匹配图片
@@ -148,7 +144,7 @@ class WeiboCookies():
                 numbers = [int(number) for number in list(template_name.split('.')[0])]
                 print('拖动顺序', numbers)
                 return numbers
-    
+
     def move(self, numbers):
         """
         根据顺序拖动
@@ -184,14 +180,14 @@ class WeiboCookies():
                     dy = circles[numbers[index + 1] - 1].location['y'] - circle.location['y']
         except:
             return False
-    
+
     def get_cookies(self):
         """
         获取Cookies
         :return:
         """
         return self.browser.get_cookies()
-    
+
     def main(self):
         """
         破解入口
@@ -211,7 +207,7 @@ class WeiboCookies():
                 'content': cookies
             }
         # 获取验证码图片
-        image = self.get_image('captcha.png')
+        image = self.get_image()
         numbers = self.detect_image(image)
         self.move(numbers)
         if self.login_successfully():
@@ -226,7 +222,6 @@ class WeiboCookies():
                 'content': '登录失败'
             }
 
-
 if __name__ == '__main__':
-    result = WeiboCookies('14773427930', 'x6pybpakq1').main()
+    result = WeiboCookies('username', 'password').main()
     print(result)
